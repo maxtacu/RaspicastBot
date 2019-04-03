@@ -1,0 +1,13 @@
+---
+- hosts: raspicast
+  become: true
+  gather_facts: False
+  tasks:
+  - name: Synchronization of raspicast_bot configuration
+    synchronize:
+      src: "./raspicast_bot.py"
+      dest: /home/pi/raspicast_bot.py
+  - name: Synchronization of raspicast_bot configuration
+    synchronize:
+      src: "./test.py"
+      dest: /home/pi/test.py
