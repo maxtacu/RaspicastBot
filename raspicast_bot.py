@@ -4,14 +4,26 @@ import telebot
 from telebot import types
 from telebot.types import Message, Update
 import random, logging, sys, os
-from tinydb import TinyDB, Query
+# from tinydb import TinyDB, Query
 import pexpect
 import time
+import logging
+import youtube_dl
+
+logging.basicConfig(
+    filename='RaspiCast.log',
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt='%m-%d %H:%M:%S',
+    level=logging.DEBUG
+)
+logger = logging.getLogger("RaspberryCast")
 
 URL = 't.me/raspicast_bot'
 BOT_NAME = 'RaspicastBot'
-keyfile = open("apiKey.txt", "r")
-TOKEN = keyfile.read()
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+keyfile = open(os.path.join(__location__, 'apiKey.txt'), "r")
+TOKEN = keyfile.read().replace('\n', '')
 STICKERS_APPROVED = [
     'CAADBAADQAADyIsGAAE7MpzFPFQX5QI',
     'CAADBAADGQADyIsGAAFl6KYZBflVyQI',
@@ -37,9 +49,9 @@ CURRENT_UNIX_DATE = int(time.time())
 
 process = None
 bot = telebot.TeleBot(TOKEN)
-logger = telebot.logger
-db = TinyDB(BOT_USERS_DB)
-query = Query()
+# logger = telebot.logger
+# db = TinyDB(BOT_USERS_DB)
+# query = Query()
 
 # telebot.logger.setLevel(logging.DEBUG)
 
@@ -77,15 +89,13 @@ def message(message: Message):
         pass
     else:
         if 'create a playlist' in message.text:
-            bot.send_message(message.chat.id, "Insert video links")
+            bot.send_message(message.chat.id, "Sorry. This feature is under development and is not available now")
             return
         url = message.text
         if url.startswith('http'):
-            playcmd = f"/usr/bin/omxplayer -b -o hdmi --vol 0 {url}"
-            # print(playcmd)
             bot.send_sticker(message.chat.id, random.choice(STICKERS_APPROVED))
             controls(message)
-            start_process(playcmd)
+            launchvideo(url)
             return
         if 'video controls' in message.text:
             controls(message)
@@ -174,9 +184,11 @@ def message(message: Message):
                     bot.send_message(message.chat.id, """Here is the list of users""")
                     return
 
-def start_process(cmd):
+def start_process(videourl):
     global process
-    process = pexpect.spawn(cmd)
+    playcmd = f"/usr/bin/omxplayer -b -o hdmi --vol 0 {videourl}"
+    process = pexpect.spawn(playcmd)
+    
 
 def controls(message: Message):
     markup = types.ReplyKeyboardMarkup(row_width=3)
@@ -203,19 +215,65 @@ def admin_pannel(message: Message):
     markup.add(itembtn1, itembtn2, itembtn3)
     bot.send_message(message.chat.id,"Here are available Admin Controls", reply_markup=markup)
 
+def launchvideo(url):
 
-# @bot.message_handler(commands=['startlist'])
-# def send_startlist(message: Message):
-# 	bot.reply_to(message, """Here is the begining of the video playlist. 
-#         Send me video links to play""")
+    logger.info('Extracting source video URL...')
 
-# @bot.message_handler(commands=['endlist'])
-# def send_endlist(message: Message):
-#     bot.send_message(message.chat.id, "Nice! Enjoy your movies! /help")
-#     bot.send_sticker(message.chat.id, random.choice(STICKERS_APPROVED))
+    out = return_full_url(url)
 
-# @bot.message_handler(content_types=['sticker'])
-# def handle_sticker(message: Message):
-# 	print(message.sticker)
+    logger.debug("Full video URL fetched.")
+
+    start_process(out)
+
+def return_full_url(url):
+    logger.debug(f"Parsing source url for {url}")
+
+    if ((url[-4:] in (".avi", ".mkv", ".mp4", ".mp3")) or (".googlevideo.com/" in url)):
+        logger.debug('Direct video URL, no need to use youtube-dl.')
+        return url
+
+    ydl = youtube_dl.YoutubeDL(
+        {
+            'logger': logger,
+            'noplaylist': True,
+            'ignoreerrors': True,
+        })  # Ignore errors in case of error in long playlists
+    with ydl:  # Downloading youtub-dl infos. We just want to extract the info
+        result = ydl.extract_info(url, download=False)
+
+    if result is None:
+        logger.error(
+            "Result is none, returning none. Cancelling following function.")
+        return None
+
+    if 'entries' in result:  # Can be a playlist or a list of videos
+        video = result['entries'][0]
+    else:
+        video = result  # Just a video
+
+    if "youtu" in url:
+        logger.debug('''CASTING: Youtube link detected.
+            Extracting url in maximal quality.''')
+        for fid in ('22', '18', '36'): # also 137,136, but these are only videos
+            for i in video['formats']:
+                if i['format_id'] == fid:
+                    logger.debug(
+                        'CASTING: Playing highest video quality ' +
+                        i['format_note'] + '(' + fid + ').'
+                    )
+                    return i['url']
+    elif "vimeo" in url:
+        logger.debug(
+            'Vimeo link detected, extracting url in maximal quality.')
+        return video['url']
+    else:
+        logger.debug('''Video not from Youtube or Vimeo.
+            Extracting url in maximal quality.''')
+        return video['url']
 
 bot.polling(timeout=60)
+
+## About
+# Send your video link to the Raspicast device from anywhere and from multiple users without sharing the ssh connection.
+## Description
+# This is a Telegram bot that runs on top of a configured Raspicast device(https://pimylifeup.com/raspberry-pi-chromecast/) and listens for video links and commands to control it.
