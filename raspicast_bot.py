@@ -3,11 +3,9 @@
 import telebot
 from telebot import types
 from telebot.types import Message, Update
-import random, logging, sys, os
+import random, logging, sys, os, time, logging
 # from tinydb import TinyDB, Query
 import pexpect
-import time
-import logging
 import youtube_dl
 
 logging.basicConfig(
@@ -42,14 +40,12 @@ STICKERS_DONTKNOW = [
     'CAADBQADfgMAAukKyAMythx0wTDJDAI'
 ]
 
-# omxplayer -b -o hdmi --vol 0 <weblink>
 BOT_USERS_DB = 'bot_user_list.json' 
 ADMIN_USER = ['maxtacu']
 CURRENT_UNIX_DATE = int(time.time())
 
 process = None
 bot = telebot.TeleBot(TOKEN)
-# logger = telebot.logger
 # db = TinyDB(BOT_USERS_DB)
 # query = Query()
 
@@ -186,7 +182,7 @@ def message(message: Message):
 
 def start_process(videourl):
     global process
-    playcmd = f"/usr/bin/omxplayer -b -o hdmi --vol 0 {videourl}"
+    playcmd = f"/usr/bin/omxplayer -b -o hdmi --vol -600 {videourl}"
     process = pexpect.spawn(playcmd)
     
 
