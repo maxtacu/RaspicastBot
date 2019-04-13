@@ -8,14 +8,6 @@ import random, logging, sys, os, time, logging
 import pexpect
 import youtube_dl
 
-logging.basicConfig(
-    filename='raspicast.log',
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt='%m-%d %H:%M:%S',
-    level=logging.DEBUG
-)
-logger = logging.getLogger("RaspberryCast")
-
 URL = 't.me/raspicast_bot'
 BOT_NAME = 'RaspicastBot'
 __location__ = os.path.realpath(
@@ -44,12 +36,29 @@ BOT_USERS_DB = 'bot_user_list.json'
 ADMIN_USER = ['maxtacu']
 CURRENT_UNIX_DATE = int(time.time())
 
+logging.basicConfig(
+    filename=os.path.join(__location__, 'raspicast.log'),
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt='%m-%d %H:%M:%S',
+    level=logging.INFO
+)
+logger = logging.getLogger("RaspberryCast")
+
 process = None
 bot = telebot.TeleBot(TOKEN)
 # db = TinyDB(BOT_USERS_DB)
 # query = Query()
 
-# telebot.logger.setLevel(logging.DEBUG)
+HELP_MESSAGE = """To play a video just send a link to me anytime without any commands
+                
+                This is a list of commands available.
+                /controls - Show video controls
+                /playlist - Create a video playlist(Not available yet)
+                /admin - Show additional admin menu
+                /shutdown - Power-off the Raspicast
+                /reboot - Reboot the device
+                
+                Pick one bellow"""
 
 @bot.message_handler(commands=['start'])
 def handle_start(message: Message):
@@ -58,29 +67,70 @@ def handle_start(message: Message):
     else:
         bot.reply_to(message, """Hi %s, what video would you like me to play?
         Use /help to check all my potential""" % message.from_user.first_name)
-        markup = types.ReplyKeyboardMarkup(row_width=3)
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         itembtn1 = types.KeyboardButton('/help')
         itembtn2 = types.KeyboardButton('/controls')
-        itembtn3 = types.KeyboardButton('create a playlist')
+        itembtn3 = types.KeyboardButton('/playlist')
         markup.add(itembtn1, itembtn2, itembtn3)
+        bot.send_message(message.chat.id, "Choose the option:", reply_markup=markup)
+
+@bot.message_handler(commands=['help'])
+def send_poweroff(message: Message):
+    if message.date <= CURRENT_UNIX_DATE:
+        pass
+    else:
+        bot.send_message(message.chat.id, HELP_MESSAGE)
+        markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+        itembtn1 = types.KeyboardButton('/shutdown')
+        itembtn2 = types.KeyboardButton('/reboot')
+        itembtn3 = types.KeyboardButton('/playlist')
+        itembtn4 = types.KeyboardButton('/admin')
+        itembtn5 = types.KeyboardButton('/controls')
+        markup.add(itembtn1, itembtn2, itembtn3, itembtn4, itembtn5)
         bot.send_message(message.chat.id, "Choose the option:", reply_markup=markup)
 
 @bot.message_handler(commands=['shutdown'])
 def send_poweroff(message: Message):
-    bot.reply_to(message, f"""{BOT_NAME} is going down for power-off. 
-    To start it back please plug the power cable again""")
-    logger.info('Power-off signal received.')
-    shutdown()
+    if message.date <= CURRENT_UNIX_DATE:
+        pass
+    else:
+        bot.reply_to(message, f"""{BOT_NAME} is going down for POWER-OFF. 
+        To start it back please plug the power cable again""")
+        logger.info('Power-off signal received.')
+        shutdown()
+
+@bot.message_handler(commands=['reboot'])
+def send_poweroff(message: Message):
+    if message.date <= CURRENT_UNIX_DATE:
+        pass
+    else:
+        bot.reply_to(message, f"""{BOT_NAME} is going for REBOOT """)
+        logger.info('Reboot signal received.')
+        reboot()
 
 @bot.message_handler(commands=['admin'])
 def admin(message: Message):
-    logger.debug('Admin menu signal received.')
-    bot.reply_to(message, f"""{BOT_NAME} admin menu.""")
-    admin_pannel(message)
+    if message.date <= CURRENT_UNIX_DATE:
+        pass
+    else:
+        logger.info('Admin menu signal received.')
+        bot.reply_to(message, f"""{BOT_NAME} admin menu.""")
+        admin_pannel(message)
 
 @bot.message_handler(commands=['controls'])
 def admin(message: Message):
-    controls(message)
+    if message.date <= CURRENT_UNIX_DATE:
+        pass
+    else:
+        controls(message)
+
+@bot.message_handler(commands=['playlist'])
+def admin(message: Message):
+    if message.date <= CURRENT_UNIX_DATE:
+        pass
+    else:
+        bot.send_message(message.chat.id, "Sorry. This feature is under development and is not available now")
+        return
 
 @bot.message_handler(content_types=['text'])
 def message(message: Message):
@@ -89,9 +139,6 @@ def message(message: Message):
     if message.date <= CURRENT_UNIX_DATE:
         pass
     else:
-        if 'create a playlist' in message.text:
-            bot.send_message(message.chat.id, "Sorry. This feature is under development and is not available now")
-            return
         url = message.text
         if url.startswith('http'):
             bot.send_sticker(message.chat.id, random.choice(STICKERS_APPROVED))
@@ -100,7 +147,7 @@ def message(message: Message):
             return
         if '+ vol' in message.text:
             if process:
-                logger.debug('Volume increase signal received.')
+                logger.info('Volume increase signal received.')
                 process.send('+')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -109,7 +156,7 @@ def message(message: Message):
             return
         if '- vol' in message.text:
             if process:
-                logger.debug('Volume decrease signal received.')
+                logger.info('Volume decrease signal received.')
                 process.send('-')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -118,7 +165,7 @@ def message(message: Message):
             return
         if 'pause/resume' in message.text:
             if process:
-                logger.debug('Pause/Resume signal received.')
+                logger.info('Pause/Resume signal received.')
                 process.send('p')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -127,7 +174,7 @@ def message(message: Message):
             return
         if 'stop' in message.text:
             if process:
-                logger.debug('Stop video signal received.')
+                logger.info('Stop video signal received.')
                 process.send('q')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -136,7 +183,7 @@ def message(message: Message):
             return
         if '-30 seconds' in message.text:
             if process:
-                logger.debug('+30 seconds signal received.')
+                logger.info('+30 seconds signal received.')
                 process.send('\x1b[D')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -145,7 +192,7 @@ def message(message: Message):
             return
         if '+30 seconds' in message.text:
             if process:
-                logger.debug('-30 seconds signal received.')
+                logger.info('-30 seconds signal received.')
                 process.send('\x1b[C')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -154,7 +201,7 @@ def message(message: Message):
             return
         if 'fast forward' in message.text:
             if process:
-                logger.debug('Fast forward signal received.')
+                logger.info('Fast forward signal received.')
                 process.send('>')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -163,7 +210,7 @@ def message(message: Message):
             return
         if 'decrease speed' in message.text:
             if process:
-                logger.debug('Decrease video speed signal received.')
+                logger.info('Decrease video speed signal received.')
                 process.send('1')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -172,7 +219,7 @@ def message(message: Message):
             return
         if 'increase speed' in message.text:
             if process:
-                logger.debug('Increase video speed signal received.')
+                logger.info('Increase video speed signal received.')
                 process.send('2')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -218,8 +265,11 @@ def controls(message: Message):
 def shutdown():
     os.system('sudo shutdown -h now')
 
+def reboot():
+    os.system('sudo reboot')
+
 def admin_pannel(message: Message):
-    markup = types.ReplyKeyboardMarkup(row_width=3)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=1)
     itembtn1 = types.KeyboardButton('Add User')
     itembtn2 = types.KeyboardButton('Delete User')
     itembtn3 = types.KeyboardButton('List Users')
@@ -237,10 +287,10 @@ def launchvideo(url):
     start_process(out)
 
 def return_full_url(url):
-    logger.debug(f"Parsing source url for {url}")
+    logger.info(f"Parsing source url for {url}")
 
     if ((url[-4:] in (".avi", ".mkv", ".mp4", ".mp3")) or (".googlevideo.com/" in url)):
-        logger.debug('Direct video URL, no need to use youtube-dl.')
+        logger.info('Direct video URL, no need to use youtube-dl.')
         return url
 
     ydl = youtube_dl.YoutubeDL(
@@ -263,28 +313,37 @@ def return_full_url(url):
         video = result  # Just a video
 
     if "youtu" in url:
-        logger.debug('''CASTING: Youtube link detected.
+        logger.info('''CASTING: Youtube link detected.
             Extracting url in maximal quality.''')
         for fid in ('22', '18', '36'): # also 137,136, but these are only videos
             for i in video['formats']:
                 if i['format_id'] == fid:
-                    logger.debug(
+                    logger.info(
                         'CASTING: Playing highest video quality ' +
                         i['format_note'] + '(' + fid + ').'
                     )
                     return i['url']
     elif "vimeo" in url:
-        logger.debug(
+        logger.info(
             'Vimeo link detected, extracting url in maximal quality.')
         return video['url']
     else:
-        logger.debug('''Video not from Youtube or Vimeo.
+        logger.info('''Video not from Youtube or Vimeo.
             Extracting url in maximal quality.''')
         return video['url']
 
 bot.polling(timeout=60)
 
+'''
 ## About
-# Send your video link to the Raspicast device from anywhere and from multiple users without sharing the ssh connection.
+Send your video link to the Raspicast device from anywhere and from multiple users without sharing the ssh connection.
 ## Description
-# This is a Telegram bot that runs on top of a configured Raspicast device(https://pimylifeup.com/raspberry-pi-chromecast/) and listens for video links and commands to control it.
+This is a Telegram bot that runs on top of a configured Raspicast device(https://pimylifeup.com/raspberry-pi-chromecast/) and listens for video links and commands to control it.
+## Commands to be set in BotFather
+/start - start the bot
+/controls - show video controls
+/admin - admin menu
+/playlist - create a playlist
+/shutdown - power-off the device
+/reboot - reboot the device
+'''
