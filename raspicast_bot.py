@@ -9,7 +9,7 @@ import pexpect
 import youtube_dl
 
 logging.basicConfig(
-    filename='RaspiCast.log',
+    filename='raspicast.log',
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt='%m-%d %H:%M:%S',
     level=logging.DEBUG
@@ -60,7 +60,7 @@ def handle_start(message: Message):
         Use /help to check all my potential""" % message.from_user.first_name)
         markup = types.ReplyKeyboardMarkup(row_width=3)
         itembtn1 = types.KeyboardButton('/help')
-        itembtn2 = types.KeyboardButton('video controls')
+        itembtn2 = types.KeyboardButton('/controls')
         itembtn3 = types.KeyboardButton('create a playlist')
         markup.add(itembtn1, itembtn2, itembtn3)
         bot.send_message(message.chat.id, "Choose the option:", reply_markup=markup)
@@ -69,13 +69,18 @@ def handle_start(message: Message):
 def send_poweroff(message: Message):
     bot.reply_to(message, f"""{BOT_NAME} is going down for power-off. 
     To start it back please plug the power cable again""")
+    logger.info('Power-off signal received.')
     shutdown()
 
 @bot.message_handler(commands=['admin'])
 def admin(message: Message):
+    logger.debug('Admin menu signal received.')
     bot.reply_to(message, f"""{BOT_NAME} admin menu.""")
     admin_pannel(message)
 
+@bot.message_handler(commands=['controls'])
+def admin(message: Message):
+    controls(message)
 
 @bot.message_handler(content_types=['text'])
 def message(message: Message):
@@ -93,11 +98,9 @@ def message(message: Message):
             controls(message)
             launchvideo(url)
             return
-        if 'video controls' in message.text:
-            controls(message)
-            return
         if '+ vol' in message.text:
             if process:
+                logger.debug('Volume increase signal received.')
                 process.send('+')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -106,6 +109,7 @@ def message(message: Message):
             return
         if '- vol' in message.text:
             if process:
+                logger.debug('Volume decrease signal received.')
                 process.send('-')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -114,6 +118,7 @@ def message(message: Message):
             return
         if 'pause/resume' in message.text:
             if process:
+                logger.debug('Pause/Resume signal received.')
                 process.send('p')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -122,6 +127,7 @@ def message(message: Message):
             return
         if 'stop' in message.text:
             if process:
+                logger.debug('Stop video signal received.')
                 process.send('q')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -130,6 +136,7 @@ def message(message: Message):
             return
         if '-30 seconds' in message.text:
             if process:
+                logger.debug('+30 seconds signal received.')
                 process.send('\x1b[D')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -138,6 +145,7 @@ def message(message: Message):
             return
         if '+30 seconds' in message.text:
             if process:
+                logger.debug('-30 seconds signal received.')
                 process.send('\x1b[C')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -146,6 +154,7 @@ def message(message: Message):
             return
         if 'fast forward' in message.text:
             if process:
+                logger.debug('Fast forward signal received.')
                 process.send('>')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -154,6 +163,7 @@ def message(message: Message):
             return
         if 'decrease speed' in message.text:
             if process:
+                logger.debug('Decrease video speed signal received.')
                 process.send('1')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -162,6 +172,7 @@ def message(message: Message):
             return
         if 'increase speed' in message.text:
             if process:
+                logger.debug('Increase video speed signal received.')
                 process.send('2')
             else:
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
@@ -179,10 +190,14 @@ def message(message: Message):
             if 'List Users' in message.text:
                     bot.send_message(message.chat.id, """Here is the list of users""")
                     return
+        else:
+            bot.reply_to(message, """Sorry. Permission denied""")
+            return
 
 def start_process(videourl):
     global process
     playcmd = f"/usr/bin/omxplayer -b -o hdmi --vol -600 {videourl}"
+    logger.info('Starting the video')
     process = pexpect.spawn(playcmd)
     
 
