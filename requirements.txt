@@ -1,0 +1,4 @@
+youtube_dl
+pexpect
+tinydb
+pyTelegramBotAPI

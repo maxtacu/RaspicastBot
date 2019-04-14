@@ -4,7 +4,7 @@ import telebot
 from telebot import types
 from telebot.types import Message, Update
 import random, logging, sys, os, time, logging
-# from tinydb import TinyDB, Query
+from tinydb import TinyDB, Query
 import pexpect
 import youtube_dl
 
@@ -32,7 +32,7 @@ STICKERS_DONTKNOW = [
     'CAADBQADfgMAAukKyAMythx0wTDJDAI'
 ]
 
-BOT_USERS_DB = 'bot_user_list.json' 
+BOT_USERS_DB = os.path.join(__location__, 'bot_userlist.json')
 ADMIN_USER = ['maxtacu']
 CURRENT_UNIX_DATE = int(time.time())
 
@@ -46,8 +46,8 @@ logger = logging.getLogger("RaspberryCast")
 
 process = None
 bot = telebot.TeleBot(TOKEN)
-# db = TinyDB(BOT_USERS_DB)
-# query = Query()
+db = TinyDB(BOT_USERS_DB)
+query = Query()
 
 HELP_MESSAGE = """To play a video just send a link to me anytime without any commands
                 
@@ -93,6 +93,8 @@ def send_poweroff(message: Message):
 def send_poweroff(message: Message):
     if message.date <= CURRENT_UNIX_DATE:
         pass
+    elif not db.search(query.username == message.from_user.username):
+        bot.reply_to(message, """Sorry. Permission denied""")
     else:
         bot.reply_to(message, f"""{BOT_NAME} is going down for POWER-OFF. 
         To start it back please plug the power cable again""")
@@ -100,9 +102,11 @@ def send_poweroff(message: Message):
         shutdown()
 
 @bot.message_handler(commands=['reboot'])
-def send_poweroff(message: Message):
+def send_reboot(message: Message):
     if message.date <= CURRENT_UNIX_DATE:
         pass
+    elif not db.search(query.username == message.from_user.username):
+        bot.reply_to(message, """Sorry. Permission denied""")
     else:
         bot.reply_to(message, f"""{BOT_NAME} is going for REBOOT """)
         logger.info('Reboot signal received.')
@@ -118,14 +122,14 @@ def admin(message: Message):
         admin_pannel(message)
 
 @bot.message_handler(commands=['controls'])
-def admin(message: Message):
+def show_controls(message: Message):
     if message.date <= CURRENT_UNIX_DATE:
         pass
     else:
         controls(message)
 
 @bot.message_handler(commands=['playlist'])
-def admin(message: Message):
+def playlist(message: Message):
     if message.date <= CURRENT_UNIX_DATE:
         pass
     else:
@@ -134,17 +138,17 @@ def admin(message: Message):
 
 @bot.message_handler(content_types=['text'])
 def message(message: Message):
-    user = message.from_user
     global process
     if message.date <= CURRENT_UNIX_DATE:
         pass
+    elif not db.search(query.username == message.from_user.username) and (message.from_user.username not in ADMIN_USER):
+        bot.reply_to(message, """Sorry. Permission denied""")
     else:
         url = message.text
         if url.startswith('http'):
             bot.send_sticker(message.chat.id, random.choice(STICKERS_APPROVED))
             controls(message)
             launchvideo(url)
-            return
         if '+ vol' in message.text:
             if process:
                 logger.info('Volume increase signal received.')
@@ -153,7 +157,6 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         if '- vol' in message.text:
             if process:
                 logger.info('Volume decrease signal received.')
@@ -162,7 +165,6 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         if 'pause/resume' in message.text:
             if process:
                 logger.info('Pause/Resume signal received.')
@@ -171,7 +173,6 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         if 'stop' in message.text:
             if process:
                 logger.info('Stop video signal received.')
@@ -180,7 +181,6 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         if '-30 seconds' in message.text:
             if process:
                 logger.info('+30 seconds signal received.')
@@ -189,7 +189,6 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         if '+30 seconds' in message.text:
             if process:
                 logger.info('-30 seconds signal received.')
@@ -198,7 +197,6 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         if 'fast forward' in message.text:
             if process:
                 logger.info('Fast forward signal received.')
@@ -207,7 +205,6 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         if 'decrease speed' in message.text:
             if process:
                 logger.info('Decrease video speed signal received.')
@@ -216,7 +213,6 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         if 'increase speed' in message.text:
             if process:
                 logger.info('Increase video speed signal received.')
@@ -225,21 +221,46 @@ def message(message: Message):
                 bot.send_message(message.chat.id, f"""{BOT_NAME} is not playing anything now. 
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
-            return
         # Admin Commands
-        if user.username in ADMIN_USER:
+        if message.from_user.username in ADMIN_USER:
             if 'Add User' in message.text:
-                    bot.send_message(message.chat.id, """Give me a username to add user""")
-                    return
+                    bot.send_message(message.chat.id, """Give me a telegram username to add user""")
+                    bot.register_next_step_handler(message, add_username)
             if 'Delete User' in message.text:
-                    bot.send_message(message.chat.id, """Give me a username to delete from users list""")
-                    return
+                    bot.send_message(message.chat.id, """Give me a telegram username to delete from users list""")
+                    bot.register_next_step_handler(message, delete_username)
             if 'List Users' in message.text:
                     bot.send_message(message.chat.id, """Here is the list of users""")
-                    return
+                    list_users(message)
         else:
             bot.reply_to(message, """Sorry. Permission denied""")
-            return
+
+
+def add_username(message: Message):
+    try:
+        chat_id = message.chat.id
+        username = message.text
+        db.insert({'username': username })
+        bot.reply_to(message, f'User {username} successfully added')
+    except Exception as e:
+        bot.reply_to(message, 'oooops')
+
+def delete_username(message: Message):
+    try:
+        chat_id = message.chat.id
+        username = message.text
+        db.remove(query.username == username)
+        bot.reply_to(message, f'User {username} successfully deleted')
+    except Exception as e:
+        bot.reply_to(message, 'oooops')
+
+def list_users(message: Message):
+    try:
+        chat_id = message.chat.id
+        all_users = db.all()
+        bot.send_message(message.chat.id, str(all_users))
+    except Exception as e:
+        bot.reply_to(message, 'oooops')
 
 def start_process(videourl):
     global process
@@ -340,10 +361,10 @@ Send your video link to the Raspicast device from anywhere and from multiple use
 ## Description
 This is a Telegram bot that runs on top of a configured Raspicast device(https://pimylifeup.com/raspberry-pi-chromecast/) and listens for video links and commands to control it.
 ## Commands to be set in BotFather
-/start - start the bot
-/controls - show video controls
-/admin - admin menu
-/playlist - create a playlist
-/shutdown - power-off the device
-/reboot - reboot the device
+start - start the bot
+controls - show video controls
+admin - admin menu
+playlist - create a playlist
+shutdown - power-off the device
+reboot - reboot the device
 '''
