@@ -143,6 +143,7 @@ def message(message: Message):
         pass
     elif not db.search(query.username == message.from_user.username) and (message.from_user.username not in ADMIN_USER):
         bot.reply_to(message, """Sorry. Permission denied""")
+        logger.info(f'Got permission denied for user {message.from_user.username}')
     else:
         url = message.text
         if url.startswith('http'):
@@ -222,19 +223,27 @@ def message(message: Message):
                     Please send me a link to play something""")
                 bot.send_sticker(message.chat.id, random.choice(STICKERS_DONTKNOW))
         # Admin Commands
-        if message.from_user.username in ADMIN_USER:
-            if 'Add User' in message.text:
-                    bot.send_message(message.chat.id, """Give me a telegram username to add user""")
-                    bot.register_next_step_handler(message, add_username)
-            if 'Delete User' in message.text:
-                    bot.send_message(message.chat.id, """Give me a telegram username to delete from users list""")
-                    bot.register_next_step_handler(message, delete_username)
-            if 'List Users' in message.text:
-                    bot.send_message(message.chat.id, """Here is the list of users""")
-                    list_users(message)
-        else:
-            bot.reply_to(message, """Sorry. Permission denied""")
-
+        if 'Add User' in message.text: 
+            if message.from_user.username not in ADMIN_USER:
+                bot.reply_to(message, """Sorry. Permission denied""")
+                logger.info(f'Got ADMIN permission denied for user {message.from_user.username}')
+            else:
+                bot.send_message(message.chat.id, """Give me a telegram username to add user""")
+                bot.register_next_step_handler(message, add_username)
+        if 'Delete User' in message.text:
+            if message.from_user.username not in ADMIN_USER:
+                bot.reply_to(message, """Sorry. Permission denied""")
+                logger.info(f'Got ADMIN permission denied for user {message.from_user.username}')
+            else:
+                bot.send_message(message.chat.id, """Give me a telegram username to delete from users list""")
+                bot.register_next_step_handler(message, delete_username)
+        if 'List Users' in message.text:
+            if message.from_user.username not in ADMIN_USER:
+                bot.reply_to(message, """Sorry. Permission denied""")
+                logger.info(f'Got ADMIN permission denied for user {message.from_user.username}')
+            else:
+                bot.send_message(message.chat.id, """Here is the list of users""")
+                list_users(message)       
 
 def add_username(message: Message):
     try:
