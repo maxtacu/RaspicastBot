@@ -2,3 +2,5 @@
 .vscode/
 apiKey.txt
 ansible/
+bot_userlist.json
+raspicast.log
