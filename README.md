@@ -22,12 +22,12 @@ Above is an example of the bot response when someone is sending a link to play.
 
 ## Running the Bot
 
-Please be sure that you have Python 3 installed.  
+Please be sure that you have Python 3.6 installed.  
 
 I preffer to run the bot inside of the virtualenv. But you can do as you want and skip this section. 
 
 ```
-python3 -m venv .venv
+python3.6 -m venv .venv
 ```
 This will create virtualenv inside **.venv** folder.  
 ```
@@ -35,10 +35,10 @@ source .venv/bin/activate
 ```  
 Install all dependencies: 
 ```
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
-Create **apiKey.txt** file in the same folder as **raspicast_bot.py** script.  
-Insert in the **apiKey.txt** the bot API key which you retrieved from BotFather when you created a bot in telegram.
+Create **apiKey.txt** file in the same folder as the **raspicast_bot.py** script with the bot's API key  
+which you retrieved from the BotFather when you created your bot in telegram.
 
 Now you are ready to start the bot.
 ```
